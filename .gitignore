@@ -1,0 +1,15 @@
+# Never commit personal databases or recovery folders!
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*Recovery*/
+dejavault_recovery_*/
+
+# Python build & cache artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.DS_Store

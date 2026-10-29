@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dejavault"
+version = "0.1.0"
+description = "Cross-platform SQLite forensics & context time-machine CLI to recover forgotten password clues."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["forensics", "sqlite", "macos", "apple-notes", "password-recovery", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+dejavault = "dejavault.cli:main"
