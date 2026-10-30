@@ -67,3 +67,15 @@ Requires Python 3.8+ and uses **zero third-party dependencies** (100% Python Sta
 * **100% Offline & Local:** Zero network calls or external dependencies.
 * **Read-Only Sandbox:** Never touches your live database directly; operates on a temporary clone opened with SQLite's `?mode=ro` URI flag and deletes the temp folder on exit.
 * **Git-Safe:** Pre-configured `.gitignore` prevents `.sqlite`, `-wal`, and `-shm` files from ever being staged or committed.
+
+## Development tests
+
+Run the dependency-free tests from the repository root:
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+The suite creates fictional in-memory or temporary SQLite databases and gzip
+payloads. It does not require Apple Notes, a backup, or Full Disk Access.
+The CI workflow runs the suite on Linux, macOS, and Windows with Python 3.9–3.12.
