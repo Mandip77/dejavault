@@ -1,15 +1,10 @@
-"""
-safe_copy.py
-Handles cross-platform sandbox copying of live SQLite databases (plus WAL/SHM journals)
-into isolated temporary directories and opens strict read-only connections.
-"""
-
 import os
 import platform
 import shutil
 import sqlite3
 import sys
 import tempfile
+import time
 from types import TracebackType
 from typing import Optional, Type
 
@@ -28,6 +23,7 @@ class SafeDatabaseCopy:
         self.temp_dir: Optional[str] = None
         self.safe_db_path: Optional[str] = None
         self.conn: Optional[sqlite3.Connection] = None
+        self.cursor: Optional[sqlite3.Cursor] = None
 
     def __enter__(self) -> sqlite3.Cursor:
         if not os.path.exists(self.source_path):
@@ -60,10 +56,30 @@ class SafeDatabaseCopy:
                 print("    3. Quit (Cmd+Q) and reopen your terminal, then run dejavault again.\n")
             sys.exit(1)
 
-        # Open in read-only URI mode so the sandbox copy is never mutated
+        # Open in read-only URI mode so the sandbox copy is never mutated.
+        # Closing the cursor and connection before removing the temp directory avoids
+        # Windows file-lock errors during cleanup.
         uri = f"file:{self.safe_db_path}?mode=ro"
         self.conn = sqlite3.connect(uri, uri=True)
-        return self.conn.cursor()
+        self.cursor = self.conn.cursor()
+        return self.cursor
+
+    def _remove_temp_dir(self) -> None:
+        if not self.temp_dir or self.keep_temp:
+            return
+
+        last_error: Optional[BaseException] = None
+        for attempt in range(10):
+            try:
+                shutil.rmtree(self.temp_dir)
+                return
+            except (FileNotFoundError, PermissionError) as exc:
+                last_error = exc
+                time.sleep(0.1 * (attempt + 1))
+
+        # Final best-effort cleanup; this avoids flaky Windows lock races after the
+        # SQLite connection has been closed.
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def __exit__(
         self,
@@ -71,7 +87,12 @@ class SafeDatabaseCopy:
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        if self.conn:
-            self.conn.close()
-        if self.temp_dir and not self.keep_temp:
-            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        try:
+            if self.cursor is not None:
+                self.cursor.close()
+                self.cursor = None
+            if self.conn is not None:
+                self.conn.close()
+                self.conn = None
+        finally:
+            self._remove_temp_dir()
