@@ -5,6 +5,7 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from dejavault.safe_copy import SafeDatabaseCopy
@@ -15,9 +16,11 @@ class SafeDatabaseCopyTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.source = Path(self.directory.name) / "synthetic.sqlite"
-        with sqlite3.connect(self.source) as connection:
-            connection.execute("CREATE TABLE sample (value TEXT)")
-            connection.execute("INSERT INTO sample VALUES ('fictional row')")
+        # The SQLite context manages the transaction, not the connection lifetime.
+        with closing(sqlite3.connect(self.source)) as connection:
+            with connection:
+                connection.execute("CREATE TABLE sample (value TEXT)")
+                connection.execute("INSERT INTO sample VALUES ('fictional row')")
         self.original_hash = self.digest(self.source)
 
     @staticmethod
